@@ -16,13 +16,15 @@ export default function AdminProductPanel() {
     image: null,
   });
 
+  // Fetch all products from API
   const fetchProducts = async () => {
     try {
       setLoading(true);
       const res = await fetch("/api/admin/add-product");
       if (!res.ok) throw new Error("পণ্য লোড করতে সমস্যা হয়েছে।");
       const data = await res.json();
-      setProducts(data);
+      // API থেকে আসা array extract করা
+      setProducts(data.data || []);
       setError(null);
     } catch (err) {
       console.error("Failed to fetch products:", err);
@@ -36,6 +38,7 @@ export default function AdminProductPanel() {
     fetchProducts();
   }, []);
 
+  // Delete product by ID
   const handleDelete = async (id) => {
     try {
       const res = await fetch(`/api/admin/add-product?id=${id}`, {
@@ -49,6 +52,7 @@ export default function AdminProductPanel() {
     }
   };
 
+  // Add new product
   const handleAddProduct = async (e) => {
     e.preventDefault();
     setLoadingAdd(true);
@@ -74,27 +78,24 @@ export default function AdminProductPanel() {
         body: formData,
       });
 
-      if (!res.ok) {
-        throw new Error("পণ্য যোগ করতে ব্যর্থ হয়েছে।");
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "পণ্য যোগ করতে ব্যর্থ হয়েছে।");
       }
 
-      const data = await res.json();
-      if (data.success) {
-        setNewProduct({
-          name: "",
-          regularPrice: "",
-          offerPrice: "",
-          details: "",
-          image: null,
-        });
-        setError(null);
-        await fetchProducts(); // Refresh the list
-      } else {
-        setError(data.message || "পণ্য যোগ করতে ব্যর্থ হয়েছে।");
-      }
+      // Clear form
+      setNewProduct({
+        name: "",
+        regularPrice: "",
+        offerPrice: "",
+        details: "",
+        image: null,
+      });
+
+      await fetchProducts(); // Refresh product list
     } catch (err) {
       console.error("Error adding product:", err);
-      setError("পণ্য যোগ করতে ব্যর্থ হয়েছে।");
+      setError(err.message || "পণ্য যোগ করতে ব্যর্থ হয়েছে।");
     } finally {
       setLoadingAdd(false);
     }
@@ -113,6 +114,7 @@ export default function AdminProductPanel() {
   return (
     <div className="bg-gray-100 min-h-screen p-8 font-sans">
       <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <div className="bg-white p-6 rounded-2xl shadow-xl mb-8 text-center">
           <h1 className="text-3xl font-bold text-gray-800">অ্যাডমিন প্যানেল</h1>
           <p className="text-gray-500 mt-2">
@@ -135,16 +137,6 @@ export default function AdminProductPanel() {
         {/* Add Product Form */}
         <div className="bg-white p-6 rounded-2xl shadow-xl mb-8">
           <h2 className="text-2xl font-bold text-gray-800 flex items-center mb-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="mr-2 text-green-500"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M12 4a1 1 0 0 0-1 1v6H5a1 1 0 0 0 0 2h6v6a1 1 0 0 0 2 0v-6h6a1 1 0 0 0 0-2h-6V5a1 1 0 0 0-1-1z" />
-            </svg>{" "}
             নতুন পণ্য যোগ করুন
           </h2>
           <form
@@ -187,12 +179,11 @@ export default function AdminProductPanel() {
               onChange={(e) =>
                 setNewProduct({ ...newProduct, details: e.target.value })
               }
-              className="px-4 py-2 border border-gray-700 bg-gray-800 text-white  rounded-lg focus:ring-2 focus:ring-blue-500 col-span-1 md:col-span-2 lg:col-span-3"
+              className="px-4 py-2 border border-gray-700 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-blue-500 col-span-1 md:col-span-2 lg:col-span-3"
               rows="4"
               required
             />
 
-            {/* Image Upload Section */}
             <div className="col-span-1 md:col-span-2 lg:col-span-3">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 পণ্য ছবি আপলোড করুন
@@ -245,40 +236,33 @@ export default function AdminProductPanel() {
             সকল পণ্য ({products.length})
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {products.map((product) => (
-              <div
-                key={product._id}
-                className="border p-4 rounded-xl flex flex-col items-center text-center space-y-4 shadow-sm hover:shadow-md transition"
-              >
-                <div className="relative w-full h-40 rounded-lg overflow-hidden flex-shrink-0">
-                  <img
-                    src={product.imageURL}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="flex-1 w-full mt-2">
-                  <h3 className="text-lg font-semibold text-gray-800">
-                    {product.name}
-                  </h3>
-                  <p className="text-gray-600">৳{product.offerPrice}</p>
-                </div>
-                <button
-                  onClick={() => handleDelete(product._id)}
-                  className="p-3 text-red-500 hover:text-red-700 transition"
+            {Array.isArray(products) &&
+              products.map((product) => (
+                <div
+                  key={product._id}
+                  className="border p-4 rounded-xl flex flex-col items-center text-center space-y-4 shadow-sm hover:shadow-md transition"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
+                  <div className="relative w-full h-40 rounded-lg overflow-hidden flex-shrink-0">
+                    <img
+                      src={product.imageURL}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 w-full mt-2">
+                    <h3 className="text-lg font-semibold text-gray-800">
+                      {product.name}
+                    </h3>
+                    <p className="text-gray-600">৳{product.offerPrice}</p>
+                  </div>
+                  <button
+                    onClick={() => handleDelete(product._id)}
+                    className="p-3 text-red-500 hover:text-red-700 transition"
                   >
-                    <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm4-11h-8a1 1 0 0 0 0 2h8a1 1 0 0 0 0-2z" />
-                  </svg>
-                </button>
-              </div>
-            ))}
+                    Delete
+                  </button>
+                </div>
+              ))}
           </div>
         </div>
       </div>

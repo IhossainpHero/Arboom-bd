@@ -1,37 +1,34 @@
 import dbConnect from "@/app/lib/dbConnect";
 import Product from "@/app/models/Product";
 import { v2 as cloudinary } from "cloudinary";
+import fs from "fs";
 import { NextResponse } from "next/server";
+import path from "path";
 
-// Configure Cloudinary with your environment variables from .env.local
+// Cloudinary config
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Helper function to read a Web Stream into a buffer
+// Helper: convert stream to buffer
 async function streamToBuffer(readableStream) {
-  const reader = readableStream.getReader();
   const chunks = [];
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) {
-      break;
-    }
-    chunks.push(value);
+  for await (const chunk of readableStream) {
+    chunks.push(chunk);
   }
   return Buffer.concat(chunks);
 }
 
-// GET handler to fetch all products
+// GET: fetch all products
 export async function GET() {
   await dbConnect();
   try {
-    const products = await Product.find({});
-    return NextResponse.json(products);
+    const products = await Product.find({}).sort({ createdAt: -1 });
+    return NextResponse.json({ success: true, data: products });
   } catch (error) {
-    console.error("Error fetching products from database:", error);
+    console.error("Error fetching products:", error);
     return NextResponse.json(
       {
         success: false,
@@ -43,52 +40,69 @@ export async function GET() {
   }
 }
 
-// POST handler to add a new product
+// POST: add new product
 export async function POST(req) {
   await dbConnect();
   try {
     const formData = await req.formData();
     const name = formData.get("name");
-    const offerPrice = formData.get("offerPrice");
-    const regularPrice = formData.get("regularPrice");
+    const offerPrice = parseFloat(formData.get("offerPrice") || 0);
+    const regularPrice = parseFloat(formData.get("regularPrice") || 0);
     const details = formData.get("details");
     const imageFile = formData.get("image");
 
     if (!imageFile) {
       return NextResponse.json(
-        { success: false, message: "ছবি আপলোড করতে ব্যর্থ হয়েছে।" },
+        { success: false, message: "ছবি নির্বাচন করুন।" },
         { status: 400 }
       );
     }
 
-    // Convert file stream to buffer using the updated helper
+    // convert to buffer
     const buffer = await streamToBuffer(imageFile.stream());
 
-    // Upload image to Cloudinary
-    const result = await cloudinary.uploader.upload(
-      `data:${imageFile.type};base64,${buffer.toString("base64")}`,
-      {
-        upload_preset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
-      }
-    );
+    // temporary file path
+    const tempPath = path.join(process.cwd(), "temp_upload");
+    if (!fs.existsSync(tempPath)) fs.mkdirSync(tempPath);
+    const tempFilePath = path.join(tempPath, imageFile.name);
+    fs.writeFileSync(tempFilePath, buffer);
 
-    // Create a new product with the Cloudinary URL and ID
-    const newProduct = new Product({
+    // upload to Cloudinary with resize + webp
+    let uploadResult;
+    try {
+      uploadResult = await cloudinary.uploader.upload(tempFilePath, {
+        folder: "arboom_products",
+        transformation: [
+          { width: 750, height: 750, crop: "limit" },
+          { fetch_format: "webp", quality: "auto:good" },
+        ],
+      });
+    } catch (err) {
+      console.error("Cloudinary upload failed:", err);
+      return NextResponse.json(
+        {
+          success: false,
+          message: "ছবি আপলোড করতে ব্যর্থ হয়েছে।",
+          error: err.message,
+        },
+        { status: 500 }
+      );
+    } finally {
+      fs.unlinkSync(tempFilePath); // remove temp file
+    }
+
+    // create product in DB
+    const newProduct = await Product.create({
       name,
-      offerPrice: parseFloat(offerPrice),
-      regularPrice: parseFloat(regularPrice),
+      offerPrice,
+      regularPrice,
       details,
-      imageURL: result.secure_url,
-      imageID: result.public_id,
+      imageURL: uploadResult.secure_url,
+      imageID: uploadResult.public_id,
     });
-    await newProduct.save();
 
     return NextResponse.json(
-      {
-        success: true,
-        message: "পণ্য সফলভাবে যোগ করা হয়েছে।",
-        product: newProduct,
-      },
+      { success: true, message: "পণ্য যোগ হয়েছে।", product: newProduct },
       { status: 201 }
     );
   } catch (error) {
@@ -104,37 +118,30 @@ export async function POST(req) {
   }
 }
 
-// DELETE handler to remove a product by ID
+// DELETE: remove product by ID
 export async function DELETE(req) {
   await dbConnect();
   const id = req.nextUrl.searchParams.get("id");
-
-  if (!id || id === "null") {
+  if (!id)
     return NextResponse.json(
       { success: false, message: "পণ্য আইডি দেওয়া হয়নি।" },
       { status: 400 }
     );
-  }
 
   try {
     const product = await Product.findById(id);
-    if (!product) {
+    if (!product)
       return NextResponse.json(
-        { success: false, message: "এই আইডির কোনো পণ্য পাওয়া যায়নি।" },
+        { success: false, message: "পণ্য পাওয়া যায়নি।" },
         { status: 404 }
       );
-    }
 
-    // Also delete the image from Cloudinary
-    if (product.imageID) {
-      await cloudinary.uploader.destroy(product.imageID);
-    }
-
+    if (product.imageID) await cloudinary.uploader.destroy(product.imageID);
     await Product.findByIdAndDelete(id);
 
     return NextResponse.json({
       success: true,
-      message: "পণ্য সফলভাবে মুছে ফেলা হয়েছে।",
+      message: "পণ্য মুছে ফেলা হয়েছে।",
     });
   } catch (error) {
     console.error("Error deleting product:", error);

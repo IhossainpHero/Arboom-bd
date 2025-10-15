@@ -3,7 +3,6 @@ import ProductGrid from "@/components/ProductGrid";
 import Order from "./models/Order";
 
 import Navbar from "@/components/Navbar";
-import ProductOrderForm from "@/components/ProductOrderForm";
 import connectDB from "../app/lib/dbConnect";
 import Product from "./models/Product";
 
@@ -42,7 +41,7 @@ export default async function Home() {
       <Navbar />
       <HeroSection />
       <ProductGrid products={products} />
-      <ProductOrderForm products={products} />
+      {/* <ProductOrderForm products={products} /> */}
     </main>
   );
 }

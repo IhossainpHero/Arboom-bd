@@ -1,10 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ProductCard from "./ProductCard";
 
 export default function ProductGrid({ products }) {
   const [selectedProduct, setSelectedProduct] = useState(null);
+
+  // 📱 Browser Back Press → Close Modal Instead of Page Back
+  useEffect(() => {
+    if (selectedProduct) {
+      // যখন modal খোলে, তখন URL-এ state push করব
+      window.history.pushState({ modalOpen: true }, "");
+      const handlePopState = () => setSelectedProduct(null);
+      window.addEventListener("popstate", handlePopState);
+      return () => window.removeEventListener("popstate", handlePopState);
+    }
+  }, [selectedProduct]);
 
   return (
     <section className="bg-gray-50 py-12">
@@ -19,7 +30,8 @@ export default function ProductGrid({ products }) {
             <ProductCard
               key={product._id}
               product={product}
-              onClick={() => setSelectedProduct(product)}
+              onAddToCart={() => console.log("Added to cart:", product.name)}
+              onPreview={() => setSelectedProduct(product)} // ✅ Preview-এ modal খুলবে
             />
           ))}
         </div>
@@ -27,8 +39,14 @@ export default function ProductGrid({ products }) {
 
       {/* Modal */}
       {selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 animate-fadeIn">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setSelectedProduct(null)} // ✅ বাইরে ক্লিক করলে modal বন্ধ হবে
+        >
+          <div
+            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 animate-fadeIn"
+            onClick={(e) => e.stopPropagation()} // ❗ modal content এ ক্লিক করলে বন্ধ হবে না
+          >
             {/* Close Button */}
             <button
               onClick={() => setSelectedProduct(null)}
