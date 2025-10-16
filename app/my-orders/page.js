@@ -64,88 +64,109 @@ export default function MyOrdersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10 px-4">
-      <div className="max-w-3xl mx-auto bg-white p-8 rounded-3xl shadow-lg">
-        <h1 className="text-3xl font-bold text-center mb-6">আমার অর্ডার</h1>
+    <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-50 py-8 px-4">
+      <div className="max-w-4xl mx-auto bg-white p-8 rounded-3xl shadow-lg border border-gray-200">
+        <h1 className="text-3xl md:text-4xl font-extrabold text-center mb-8 text-gray-800 tracking-tight">
+          🛍️ আমার অর্ডার
+        </h1>
 
-        <div className="flex gap-3 mb-6">
+        {/* Search Section */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-8">
           <input
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="আপনার ফোন নাম্বার লিখুন"
-            className="flex-1 px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500"
+            placeholder="📱 আপনার ফোন নাম্বার লিখুন"
+            className="flex-1 px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-gray-800 placeholder-gray-400"
           />
           <button
             onClick={handleFetchOrders}
-            className="px-5 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition"
+            className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold transition-all duration-200 shadow-md active:scale-95"
           >
-            {loading ? "লোড হচ্ছে..." : "অর্ডার দেখুন"}
+            {loading ? "লোড হচ্ছে..." : "🔍 অর্ডার দেখুন"}
           </button>
         </div>
 
+        {/* Message */}
         {message && (
-          <p className="mb-6 text-center text-red-600 font-semibold">
+          <p className="mb-6 text-center text-red-600 font-semibold bg-red-50 py-2 rounded-lg">
             {message}
           </p>
         )}
 
+        {/* Empty State */}
+        {orders.length === 0 && !message && (
+          <div className="text-center py-12 text-gray-500">
+            <img
+              src="/no-orders.svg"
+              alt="No orders"
+              className="w-40 mx-auto mb-4 opacity-80"
+            />
+            <p className="text-lg font-medium">কোনো অর্ডার পাওয়া যায়নি</p>
+          </div>
+        )}
+
+        {/* Orders */}
         {orders.length > 0 && (
-          <div className="space-y-4">
+          <div className="grid gap-6 sm:grid-cols-2">
             {orders.map((order) => (
               <div
                 key={order._id}
-                className="border p-4 rounded-xl shadow-sm bg-gray-50"
+                className="border p-5 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-all shadow-sm hover:shadow-md"
               >
-                <div className="flex justify-between items-start">
+                {/* Header */}
+                <div className="flex justify-between items-start mb-3">
                   <div>
-                    <p className="font-semibold">{order.customerName}</p>
+                    <p className="font-bold text-gray-900 text-lg">
+                      {order.customerName}
+                    </p>
                     <p className="text-sm text-gray-600">{order.phone}</p>
                     <p className="text-sm text-gray-600">{order.address}</p>
                   </div>
-                  <div>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        order.status === "cancelled"
-                          ? "bg-red-100 text-red-700"
-                          : order.status === "delivered"
-                          ? "bg-purple-100 text-purple-700"
-                          : "bg-amber-100 text-amber-700"
-                      }`}
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      order.status === "cancelled"
+                        ? "bg-red-100 text-red-700"
+                        : order.status === "delivered"
+                        ? "bg-purple-100 text-purple-700"
+                        : "bg-amber-100 text-amber-700"
+                    }`}
+                  >
+                    {order.status}
+                  </span>
+                </div>
+
+                {/* Product list */}
+                <div className="space-y-3">
+                  {order.products?.map((p, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-3 border-b pb-2 last:border-none"
                     >
-                      {order.status}
-                    </span>
-                  </div>
+                      <img
+                        src={p.imageURL}
+                        alt={p.name}
+                        className="w-14 h-14 object-cover rounded-lg border"
+                      />
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-800">{p.name}</p>
+                        <p className="text-sm text-gray-600">
+                          Qty: {p.quantity} × ৳{p.price}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
-                <div className="mt-3">
-                  <ul className="space-y-2">
-                    {order.products?.map((p, i) => (
-                      <li key={i} className="flex items-center gap-3">
-                        <img
-                          src={p.imageURL}
-                          alt={p.name}
-                          className="w-12 h-12 object-cover rounded-lg"
-                        />
-                        <div>
-                          <p className="font-medium text-gray-900">{p.name}</p>
-                          <p className="text-sm text-gray-600">
-                            Qty: {p.quantity} × ৳{p.price}
-                          </p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="mt-3 flex justify-between items-center">
-                  <p className="font-bold text-green-700">
+                {/* Footer */}
+                <div className="mt-4 flex justify-between items-center">
+                  <p className="font-bold text-green-700 text-lg">
                     মোট: ৳{order.totalPrice}
                   </p>
                   {order.status !== "cancelled" && (
                     <button
                       onClick={() => handleCancelOrder(order._id)}
-                      className="px-3 py-1 text-white bg-red-500 rounded-lg hover:bg-red-600 transition text-sm"
+                      className="px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600 transition text-sm font-semibold shadow-sm active:scale-95"
                     >
                       বাতিল করুন
                     </button>

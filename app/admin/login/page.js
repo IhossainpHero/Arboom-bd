@@ -6,10 +6,13 @@ import { useState } from "react";
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    if (loading) return; // prevent double click
+    setLoading(true);
 
     try {
       const res = await fetch("/api/auth/login", {
@@ -19,7 +22,11 @@ export default function AdminLoginPage() {
       });
 
       if (res.ok) {
-        router.push("/admin/dashboard"); // ✅ সঠিক route
+        // Optionally store token if backend returns one
+        // const data = await res.json();
+        // localStorage.setItem("token", data.token);
+
+        router.push("/admin/dashboard");
       } else {
         const data = await res.json();
         alert(data.message || "Login failed");
@@ -27,6 +34,8 @@ export default function AdminLoginPage() {
     } catch (err) {
       console.error("Login error:", err);
       alert("Something went wrong!");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -54,9 +63,14 @@ export default function AdminLoginPage() {
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded"
+            disabled={loading}
+            className={`w-full py-2 rounded text-white ${
+              loading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
           >
-            লগইন করুন
+            {loading ? "লগইন হচ্ছে..." : "লগইন করুন"}
           </button>
         </form>
 
